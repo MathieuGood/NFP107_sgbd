@@ -1,3 +1,10 @@
+/*
+* Schéma de la base "Immeubles" - Cf. http://sql.bdpedia.fr
+* 
+* create database Immeubles;
+* grant select on Immeubles.* to lecteur identified by 'mdpLecteur'
+*/
+
 create table Immeuble (id integer not null,
                        nom varchar(100) not null,
                        adresse varchar(255) not null,
@@ -29,4 +36,4 @@ create table Propriétaire (idPersonne integer not null,
                       primary key (idPersonne, idAppart),
                       foreign key (idPersonne) references Personne(id),
                       foreign key (idAppart) references Appart(id)
-);
+) ;

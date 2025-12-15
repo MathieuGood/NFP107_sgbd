@@ -1,3 +1,23 @@
+/*
+   Commandes de création de la base Films,  testé avec MySQL et PostgreSQL.
+   Pour Oracle, il suffit de remplacer le type TEXT par le type LONG dans 
+   la table Film.
+   Philippe Rigaux, 2004-2019
+*/
+
+/* Destruction éventuelle des tables existantes 
+
+DROP TABLE  Notation;  
+DROP TABLE  Role;  
+DROP TABLE  Film;  
+DROP TABLE Artiste;  
+DROP TABLE  Internaute;  
+DROP TABLE  Pays;  
+DROP TABLE  Genre;  */
+
+/* Creation des tables                           */   
+
+ 
 create table Pays (code    varchar(4) NOT NULL,
                    nom  varchar (30) DEFAULT 'Inconnu' NOT NULL,
                    langue varchar (30) NOT NULL,
@@ -22,6 +42,7 @@ create table Film  (idFilm integer NOT NULL,
                     année    integer NOT NULL,
                     idRéalisateur    integer,
                     genre varchar (20) NOT NULL,
+                    /* Remplacer TEXT par LONG pour ORACLE */
                     résumé      TEXT,
                     codePays    varchar (4),
                     primary key (idFilm),

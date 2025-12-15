@@ -1,3 +1,17 @@
+/*
+* Auteur : Philippe Rigaux (philippe.rigaux@cnam.fr)
+* Objet : création du schéma de la base 'Voyageurs'
+* 
+* create database Voyageurs;
+* grant select on Voyageurs.* to lecteur identified by 'mdpLecteur'
+*/
+
+drop table Séjour;
+drop table Activité;
+drop table Voyageur;
+drop table Logement;
+
+
 create table Voyageur (idVoyageur integer not null,
                       nom varchar(30) not null,
                       prénom varchar(30)  not null,
@@ -11,8 +25,8 @@ create table Logement (code varchar(4) not null,
                        nom varchar(50) not null,
                        capacité   integer not null,
                        type varchar(10) default 'Hôtel',
-                       lieu varchar(30) not null,
-                       primary key (code)
+	                    lieu varchar(30) not null,
+	                    primary key (code)
                     );
 
                     
