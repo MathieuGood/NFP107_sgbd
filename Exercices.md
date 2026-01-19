@@ -1,10 +1,4 @@
-Quelles régions n’ont pas de département?
 
-Quelles personnes ne président ni région ni département?
-
-Donner, pour chaque région, le nombre de département et sa population totale (obtenue par cumul de celle des départements)
-
-Dans la requête précédente, que se passe-t-il si une région n’a pas de département? Comment réussir à afficher le nom de la région avec la valeur 0 pour le nombre de départements dans ce cas?
 
 ```sql
 
@@ -57,5 +51,35 @@ WHERE d2.nom = 'CANTAL'
 
 SELECT nom
 FROM Voisins
+
+
+
+
+-- Quelles régions n’ont pas de département?
+
+SELECT Région.intitulé
+FROM Région as R
+WHERE NOT EXISTS (
+    SELECT * FROM Départment as D
+    WHERE D.codeRégion = R.CodeRégion
+)
+
+
+-- Quelles personnes ne président ni région ni département?
+
+SELECT P.nom, P.prénom
+FROM Personnes as P
+WHERE 
+    NOT EXISTS (
+        SELECT * FROM Région WHERE Région.idPrésident = P.idPersonne
+    )
+    OR NOT EXISTS (
+        SELECT * FROM Département WHERE Département.idPrésident = P.idPersonne 
+    )
+
+
+-- Donner, pour chaque région, le nombre de département et sa population totale (obtenue par cumul de celle des départements)
+
+-- Dans la requête précédente, que se passe-t-il si une région n’a pas de département? Comment réussir à afficher le nom de la région avec la valeur 0 pour le nombre de départements dans ce cas?
 
 ```

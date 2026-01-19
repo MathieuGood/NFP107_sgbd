@@ -1,5 +1,13 @@
 # NFP 107 : Systèmes de Gestion des Bases de Données
 
+- 3 forme normales
+- Algorithme de normalisation
+- Notion de réification
+- Notion d'entité faible
+- Types d'association (un à un, un à plusieurs, plusieurs à plusieurs)
+
+
+
 ## Le modèle relationnel
 
 ### Relation
