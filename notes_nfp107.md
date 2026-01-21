@@ -1,12 +1,17 @@
 # NFP 107 : Systèmes de Gestion des Bases de Données
 
+Questions courantes :
+
+- Commandes de création de table
+- Donner schéma entité/association
+- En forme normale ?
+
 - 3 forme normales
 - Algorithme de normalisation
 - Notion de réification
 - Notion d'entité faible
 - Types d'association (un à un, un à plusieurs, plusieurs à plusieurs)
-
-
+- Principes de fonctionnement d'un curseur : immuable (sa valeur ne change jamais)
 
 ## Le modèle relationnel
 
@@ -24,16 +29,50 @@ Une relation se définit par :
 
 ### nuplet
 
-Un élement d'une relation de dimension n est un n-uplet (ou tuple) de n valeurs.
-Exemple : (123, "Dupont", "Jean", 1980)
+Un élement d'une relation de dimension n est un n-uplet (ou tuple) de n valeurs. Exemple : (123, "Dupont", "Jean", 1980)
 
 Dans la représentation par table, un nuplet est une ligne de la table.
 On assimile nuplet et ligne, mais attention, ce n'est pas n'importe quelle ligne, c'est une ligne qui respecte le schéma de la relation.
 
-### Première forme normale (1FN)
+### Entité faible
 
-Une relation est en première forme normale si tous les attributs sont atomiques, c'est-à-dire qu'ils ne peuvent pas être décomposés en sous-attributs.
-Exemple : La relation Étudiant(NumÉtudiant, NomÉtudiant, PrénomÉtudiant, Téléphones) n'est pas en 1FN si Téléphones contient plusieurs numéros séparés par des virgules. Pour être en 1FN, il faudrait avoir un attribut Téléphone unique par nuplet.
+Une entité faible est une entité qui ne peut pas être identifiée uniquement par ses propres attributs et qui dépend d’une autre entité (dite forte) pour son identification.
+👉 Elle n’a pas de clé primaire complète toute seule.
+
+🔍 Comment reconnaître une entité faible à l’examen (ALGORITHME)
+
+1. A-t-elle une clé propre ?
+   ❌ non → possible entité faible
+   ✅ oui → entité forte
+
+2. Son identification dépend-elle d’une autre entité ?
+   ❌ non → entité forte
+   ✅ oui → continuer
+
+3. La clé contient-elle une clé étrangère ?
+   ❌ non → pas une entité faible
+   ✅ oui → ENTITÉ FAIBLE
+
+### Formes normales
+
+#### 1FN — Première forme normale
+
+Une relation est en **1FN** si tous les attributs contiennent des **valeurs atomiques** (pas de liste, pas de valeurs multiples dans une case).
+
+#### 2FN — Deuxième forme normale
+
+(la relation est déjà en 1FN)  
+Une relation est en **2FN** s’il n’existe **aucune dépendance partielle** d’un attribut non-clé à **une partie seulement d’une clé composée**.
+
+#### 3FN — Troisième forme normale
+
+(la relation est déjà en 2FN)  
+Une relation est en **3FN** s’il n’existe **aucune dépendance transitive** entre attributs non-clés (tout attribut non-clé dépend directement de la clé).
+❌ Pas en 3FN : Employé(idEmp, idDept, nomDept) 👉 nomDept dépend de idDept, pas de idEmp
+✅ En 3FN (décomposition) : Employé(idEmp, idDept) et Département(idDept, nomDept)
+Toutes les dépendances fonctionnelles doivent avoir pour origine une clé.
+Exemple : Dans la relation Manuscrit, la dépendance fonctionnelle NumManuscrit -> Titre est acceptable car NumManuscrit est une clé.
+Cependant, si on avait une dépendance fonctionnelle Titre -> AnnéePubli, cela ne serait pas acceptable car Titre n'est pas une clé.
 
 ### Notions à retenir
 
@@ -74,12 +113,6 @@ Il peut y avoir plusieurs clés dans une relation (clés candidates) mais une se
 
 Une clé étrangère est un attribut (ou un ensemble d'attributs) dans une relation qui fait référence à la clé primaire d'une autre relation.
 Exemple : Dans la relation Manuscrit, NumAuteur est une clé étrangère qui fait référence à la clé primaire NumAuteur de la relation Auteur.
-
-### Troisième forme normale (3FN)
-
-Toutes les dépendances fonctionnelles doivent avoir pour origine une clé.
-Exemple : Dans la relation Manuscrit, la dépendance fonctionnelle NumManuscrit -> Titre est acceptable car NumManuscrit est une clé.
-Cependant, si on avait une dépendance fonctionnelle Titre -> AnnéePubli, cela ne serait pas acceptable car Titre n'est pas une clé.
 
 ### Notions à retenir
 
@@ -148,12 +181,15 @@ On transforme la relation Jouer en une entité Rôle : Role(idRole, idFilm, idAc
 idRole est la clé primaire
 (idFilm, idActeur) n’est plus une clé
 
-« Si j’avais choisi de réifier l’entité Rôle, en lui donnant un identifiant propre, que devient la clé (idFilm, idActeur)? »
-Ce n’est plus une clé !
+« Si j’avais choisi de réifier l’entité Rôle, en lui donnant un identifiant propre, que devient la clé (idFilm, idActeur)? » Ce n’est plus une clé !
 
-📌 Parce que :
+📌 Parce que : La clé primaire devient idRole (idFilm, idActeur) peut être : un simple couple d’attributs éventuellement UNIQUE (si on le décide) mais ce n’est plus la clé primaire
 
-La clé primaire devient idRole (idFilm, idActeur) peut être : un simple couple d’attributs éventuellement UNIQUE (si on le décide) mais ce n’est plus la clé primaire
+On ne réifie PAS si :
+
+- la relation est pure liaison
+- aucune information métier propre
+- aucun besoin d’identifier le lien
 
 ## Join
 

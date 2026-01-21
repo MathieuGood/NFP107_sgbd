@@ -1,7 +1,6 @@
 
 
 ```sql
-
 CREATE TABLE Département
     (
         codeDpt INT PRIMARY KEY,
