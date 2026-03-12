@@ -200,3 +200,284 @@ On ne réifie PAS si :
 | **FULL JOIN**    | Garde toutes les lignes des deux tables                  | Tout (avec NULL si pas de match)  | Cas très spécifiques    |
 | **CROSS JOIN**   | Produit cartésien                                        | Toutes les combinaisons possibles | Avec sélection derrière |
 | **NATURAL JOIN** | Jointure automatique sur les attributs de même nom       | Dépend des noms d’attributs       | Seulement si imposé     |
+
+## Exercice Structures adminstratives
+
+On met en place un système d’information sur les structures administratives françaises: régions, départements, préfectures. Voici le schéma de la base sur laquelle nous allons travailler. Les clés primaires sont en gras, les clés étrangères ne sont pas indiquées.
+
+- Personne(idPersonne, nom, prénom)
+- Région(codeRégion, intitulé, préfecture, idPrésident)
+- Département (codeDpt, nom, préfecture, population, codeRégion, idPrésident)
+- Voisins (codeDpt1, codeDpt2)
+
+Dans les tables Région et Département, préfecture désigne la ville siège de la préfecture de région ou de département. Strasbourg est à la fois préfecture de la région Grand Est et du département du Bas-Rhin. Dans la même région, Colmar est préfecture du département du Haut-Rhin. Régions et départements sont présidés par une personne. Deux départements sont voisins s’ils ont une frontière commune.
+
+```sql
+CREATE TABLE Département
+    (
+        codeDpt INT PRIMARY KEY,
+        nom VARCHAR(255),
+        préfecture VARCHAR(255),
+        population INT,
+        codeRégion INT,
+        idPrésident INT,
+        FOREIGN KEY (codeRégion) REFERENCES Région (codeRégion),
+        FOREIGN KEY (idPrésident) REFERENCES Personne (idPersonne)
+    )
+CREATE TABLE Voisins
+    (
+        codeDpt1 INT NOT NULL ,
+        codeDpt2 INT NOT NULL,
+        PRIMARY KEY (codeDpt1, codeDpt2),
+        FOREIGN KEY (codeDpt1) REFERENCES Département (codeDpt),
+        FOREIGN KEY (codeDpt2) REFERENCES Département (codeDpt)
+    )
+
+-- Qui préside (prénom, nom) la région contenant le département “Cantal”?
+SELECT Personne.prénom, Personne.nom
+FROM Région
+JOIN Personne ON Région.idPrésident = Personne.idPersonne
+WHERE Région.codeRégion = (SELECT codeRégion FROM Département WHERE nom = 'CANTAL')
+
+-- Quelles villes sont à la fois préfecture de région et d’un département de plus de 100000 habitants (donner le nom de la ville, du département, et l’intitulé de la région).
+SELECT DISTINCT r.préfecture, d.nom, r.intitulé
+FROM Région r
+JOIN Département d ON r.codeRégion = d.codeRégion
+WHERE r.préfecture = d.préfecture
+  AND d.population > 100000;
+
+-- Quels sont les départements voisins du Cantal ? (Aide: et si vous utilisiez la vue V3 définie précédemment?)
+SELECT DISTINCT d1.nom
+FROM Département d1
+JOIN Voisins v ON d1.codeDpt = v.codeDpt1 OR d1.codeDpt = v.codeDpt2
+JOIN Département d2 ON (v.codeDpt1 = d2.codeDpt OR v.codeDpt2 = d2.codeDpt)
+WHERE d2.nom = 'CANTAL'
+  AND d1.nom <> 'CANTAL';
+
+select  d2.nom as voisinCantal
+from   Département as d1, Département as d2, V3 as v
+where d1.nom='Cantal'
+/* On sait que dans V3, on trouve chaque voisinage
+   représenté dans les deux sens */
+and v.codeDpt1=d1.codeDpt
+and v.codeDpt2=d2.codeDpt
+
+select d2.nom as voisinCantal
+from  Département as d1, Département as d2, Voisins as v
+where d1.nom='Cantal'
+and (
+        /* Cas d'un voisin de code supérieur au Cantal */
+        (d1.codeDpt < d2.codeDpt and v.codeDpt1 = d1.codeDpt1 and v.codeDpt2=d2.codeDpt)
+    or
+        /* Cas d'un voisin de code inférieur au Cantal */
+        (d1.codeDpt > d2.codeDpt and v.codeDpt1 = d1.codeDpt2 and v.codeDpt2=d1.codeDpt)
+        )
+
+-- Quels départements d’une même région sont voisins l’un de l’autre? Donnez l’intitulé de la région et les noms des deux départements. Attention à bien prendre en compte la contrainte sur les clés dans Voisins
+select r.intitulé, d1.nom as nomDpt1, d2.nom as nomDpt2
+from  Région as r, Département as d1, Département as d2, Voisins as v
+where r.codeRégion = d1.codeRégion
+and r.codeRégion = d2.codeRégion
+/* Pour prendre la relation 'voisins dans le bon sens' */
+and d1.codeDpt < d2.codeDpt
+and v.codeDpt1=d1.codeDpt
+and v.codeDpt2=d2.codeDpt
+
+-- Quelles régions n’ont pas de département?
+SELECT Région.intitulé
+FROM Région as R
+WHERE NOT EXISTS (
+    SELECT * FROM Départment as D
+    WHERE D.codeRégion = R.CodeRégion
+)
+
+-- Quelles personnes ne président ni région ni département?
+select *
+from  Personne as p
+where not exists (
+        select * from Département as d
+        where d.idPrésident = p.idPrésident)
+and not exists (
+        select * from Région as d
+        where r.idPrésident = p.idPrésident)
+
+-- Donner, pour chaque région, le nombre de département et sa population totale (obtenue par cumul de celle des départements)
+select r.intitulé, count(d.codeDpt), sum(population) as population
+from  Région as r, Département as d
+where r.codeRégion = d1.codeRégion
+group by r.codeRégion, r.intitulé
+
+-- Dans la requête précédente, que se passe-t-il si une région n’a pas de département? Comment réussir à afficher le nom de la région avec la valeur 0 pour le nombre de départements dans ce cas?
+select r.intitulé, count(d.codeDpt), sum(population) as population
+from  Région as r left join Département as d on r.codeRégion = d1.codeRégion
+group by r.codeRégion
+--Les régions sans département apparaissent dans le résultat de la jointure avec une valeur à null pour la population, et le count appliqué à null renvoie 0 (tandis que le sum appliqué à null renvoie null).
+```
+
+## Création de table
+
+```sql
+create table Voisins
+        (idDpt1 int not null,
+        idDpt2 int not null
+        primary key (idDpt1, idDpt2),
+        foreign key (idDpt1) references Département (idDpt),
+        foreign key (idDpt2) references Département (idDpt)
+        )
+check (codeDpt1  < codeDpt2)
+```
+
+**Existe-t-il une association plusieurs-plusieurs dans ce schéma? Si oui vous paraîtrait-il judicieux de la réifier?**
+Voisins provient d’une association plusieurs-plusieurs. La contrainte sur la clé implique qu’un département ne peut pas être deux fois le voisin d’un autre. C’est une contrainte tout à fait raisonnable, voire indispensable. La réification est donc inutile.
+
+Notons D le département, P la personne, ND le nom du département et NP le nom de la personne. Le schéma nous donne les dépendances fonctionnelles suivantes: D -> P, ND et P -> NP.
+On ajoute la dépendance P -> D. Comment l’interpréter et que devient le schéma relationnel?
+La dépendandce additionnelle indique qu’une personne ne peut diriger qu’un seul département. L’identifiant d’une personne pourrait donc servir à identifier un département. Ce ne serait cependant pas un très bon choix car la personne dirigeant un département est amenée à changer régulièrement. En pratique, mieux vont donc déclarer dans le schéma une contrainte d’unicité sur l’idenfifiant idPrésident dans la table Département (c’est également une clé étrangère).
+
+Dans toute la suite de l’examen, on travaille sur le schéma donné dans l’énoncé, et en supposant que la contrainte sur l’ordre des codes de département est respectée dans la table Voisins (donc, codeDpt1 < codeDpt2).
+
+Algèbre et vues (4 pts)
+On définit algébriquement les relations suivantes:
+
+Répondez aux questions suivantes:
+
+Quel est le résultat de
+?
+
+Comment caractériseriez-vous le contenu de
+?
+
+Donnez la commande SQL de création de la vue
+.
+
+Soit le département de code
+. Quelle requête algébrique sur
+donne les codes de tous ses voisins (expliquer).
+
+Correction
+
+est donc un synonyme de la table Voisins, et
+a le même contenu que
+mais l’ordre des clés est inversé. On ne trouve dans
+que les paires de département (d1, d2) tels que d1 > d2. D’où la réponse aux questions:
+
+est vide
+
+contient toutes les paires de départements voisins (d1, d2) et (d2, d1). Autrement dit, chaque relation de voisinage entre deux départements est représentée dans les deux sens.
+
+On peut donc créer la vue suivante qui pourra nous simplifier les requêtes SQL par la suite.
+
+create view V3 as
+select \* from Voisins
+union
+select codeDpt2 as codeDpt1, codeDpt1 as codeDpt2
+from Voisins
+Avec
+, on n’a plus besoin de se soucier de l’ordre des codes de département. On peut donc écrire soit:
+
+soit
+
+qui donneront le même résultat.
+
+SQL (7 pts)
+Exprimez en SQL les requêtes suivantes:
+
+Qui préside (prénom, nom) la région contenant le département “Cantal”?
+
+Quelles villes sont à la fois préfecture de région et d’un département de plus de 100000 habitants (donner le nom de la ville, du département, et l’intitulé de la région).
+
+Quels sont les départements voisins du Cantal ? (Aide: et si vous utilisiez la vue V3 définie précédemment?)
+
+Quels départements d’une même région sont voisins l’un de l’autre? Donnez l’intitulé de la région et les noms des deux départements. Attention à bien prendre en compte la contrainte sur les clés dans Voisins
+
+Quelles régions n’ont pas de département?
+
+Quelles personnes ne président ni région ni département?
+
+Donner, pour chaque région, le nombre de département et sa population totale (obtenue par cumul de celle des départements)
+
+Dans la requête précédente, que se passe-t-il si une région n’a pas de département? Comment réussir à afficher le nom de la région avec la valeur 0 pour le nombre de départements dans ce cas?
+
+Correction
+
+select prénom, nom
+from Personne as p, Région as r, Département as d
+where d.nom='Cantal'
+and d.codeRégion = r.codeRégion
+and r.idPrésident = p.idPersonne
+select r.préfecture as ville, r.intitulé, d.noms
+from Région as r, Département as d
+where r.préfecture = d.préfecture
+and d.population > 10000
+Il est plus simple d’utiliser la vue V3.
+
+select d2.nom as voisinCantal
+from Département as d1, Département as d2, V3 as v
+where d1.nom='Cantal'
+/_ On sait que dans V3, on trouve chaque voisinage
+représenté dans les deux sens _/
+and v.codeDpt1=d1.codeDpt
+and v.codeDpt2=d2.codeDpt
+Sinon, solution SQL complète avec un “ou” logique. Plus compliqué…
+
+select d2.nom as voisinCantal
+from Département as d1, Département as d2, Voisins as v
+where d1.nom='Cantal'
+and (
+/_ Cas d'un voisin de code supérieur au Cantal _/
+(d1.codeDpt < d2.codeDpt and v.codeDpt1 = d1.codeDpt1 and v.codeDpt2=d2.codeDpt)
+or
+/_ Cas d'un voisin de code inférieur au Cantal _/
+(d1.codeDpt > d2.codeDpt and v.codeDpt1 = d1.codeDpt2 and v.codeDpt2=d1.codeDpt)
+)
+select r.intitulé, d1.nom as nomDpt1, d2.nom as nomDpt2
+from Région as r, Département as d1, Département as d2, Voisins as v
+where r.codeRégion = d1.codeRégion
+and r.codeRégion = d2.codeRégion
+/_ Pour prendre la relation 'voisins dans le bon sens' _/
+and d1.codeDpt < d2.codeDpt
+and v.codeDpt1=d1.codeDpt
+and v.codeDpt2=d2.codeDpt
+select _
+from Région as r
+where not exists (
+select_ from Département as d
+where r.codeRégion = d1.codeRégion)
+select _
+from Personne as p
+where not exists (
+select _ from Département as d
+where d.idPrésident = p.idPrésident)
+and not exists (
+select \* from Région as d
+where r.idPrésident = p.idPrésident)
+select r.intitulé, count(d.codeDpt), sum(population) as population
+from Région as r, Département as d
+where r.codeRégion = d1.codeRégion
+group by r.codeRégion, r.intitulé
+Si on veut prendre en compte les régions sans département, il faut faire une jointure externe
+
+select r.intitulé, count(d.codeDpt), sum(population) as population
+from Région as r left join Département as d on r.codeRégion = d1.codeRégion
+group by r.codeRégion
+Les régions sans département apparaissent dans le résultat de la jointure avec une valeur à null pour la population, et le count appliqué à null renvoie 0 (tandis que le sum appliqué à null renvoie null).
+
+Modèle relationnel (3 pts)
+Soit les attributs TGVER avec les dépendances fonctionnelles suivantes:
+;
+;
+.
+
+Quelle est la clé?
+
+Quel est le résultat de l’algorithme de normalisation?
+
+Ce résultat est-il en troisième forme normale?
+
+Correction
+
+Tous les attributs qui n’apparaissent pas à droite sont nécessairement dans la clé, donc T, V et R. On vérifie aisément que TVR est une clé (la seule).
+
+On a donc les relations (TGE) et (RG), auxquelles il faut ajouter la clé (TVR) (algorithme de normalisation).
+
+Le résultat est en troisième forme normale, si l’on admet une petite extension: dans la relation TGE, la DF E -> G n’a pas la clé pour partie gauche. Mais on ne peut pas décomposer plus sans perdre d’information. C’est un cas (très rare en pratique) où il faut admettre une définition de la 3FN un peu plus compliquée que celle donnée en cours.
